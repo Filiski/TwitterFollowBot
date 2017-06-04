@@ -233,6 +233,29 @@ You will need to manually edit the code if you want to add special users that wi
 In the example above, the bot will try to add 10 users to the twitterbot-list that are tweeting #TwitterBot.
 
 Remember that the max number of users in a list is 5000.
+
+## Stuff added from depot:
+
+### Scripts
+
+All scripts have a break at start-up, to simulate that's was launched at a random time.
+You can override this break by doing:
+python `script.py`{parameter} nowait
+
+"nowait" has to be the second parameter (for now)
+
+How to use in crontab:
+8 * * * * python follow.py  `USERNAME`
+8 * * * * python rt.py  `sentence or username`
+8 * * * * python fav.py  `sentence or username`
+49 * * * * python followback.py
+
+### Features
+- For followback, follow_followers_of_users: instant mute and count up to 10 (for new) or 25 (for followback)
+- not following already muted personn
+
+##Incoming
+variable count_users_fw dynamic
     
 ## Have questions? Need help with the bot?
 
