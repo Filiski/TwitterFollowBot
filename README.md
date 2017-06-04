@@ -246,8 +246,11 @@ python `script.py`{parameter} nowait
 
 How to use in crontab:
 8 * * * * python follow.py  `USERNAME`
+
 8 * * * * python rt.py  `sentence or username`
+
 8 * * * * python fav.py  `sentence or username`
+
 49 * * * * python followback.py
 
 ### Features
