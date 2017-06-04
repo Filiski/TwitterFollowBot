@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright 2016 Randal S. Olson
+Copyright 2015 Randal S. Olson
 
 This file is part of the Twitter Bot library.
 
@@ -237,12 +237,10 @@ class TwitterBot:
                 # don't favorite your own tweets
                 if tweet["user"]["screen_name"] == self.BOT_CONFIG["TWITTER_HANDLE"]:
                     continue
-                
-                self.wait_on_action()
-                
+
                 result = self.TWITTER_CONNECTION.favorites.create(_id=tweet["id"])
                 print("Favorited: %s" % (result["text"].encode("utf-8")), file=sys.stdout)
-
+                time.sleep(3+random.random()*7)
             # when you have already favorited a tweet, this error is thrown
             except TwitterHTTPError as api_error:
                 # quit on rate limit errors
@@ -266,12 +264,10 @@ class TwitterBot:
                 # don't retweet your own tweets
                 if tweet["user"]["screen_name"] == self.BOT_CONFIG["TWITTER_HANDLE"]:
                     continue
-                
-                self.wait_on_action()
-                
+
                 result = self.TWITTER_CONNECTION.statuses.retweet(id=tweet["id"])
                 print("Retweeted: %s" % (result["text"].encode("utf-8")), file=sys.stdout)
-
+                time.sleep(3+random.random()*7)
             # when you have already retweeted a tweet, this error is thrown
             except TwitterHTTPError as api_error:
                 # quit on rate limit errors
@@ -304,7 +300,6 @@ class TwitterBot:
 
                     print("Followed %s" %
                           (tweet["user"]["screen_name"]), file=sys.stdout)
-
             except TwitterHTTPError as api_error:
                 # quit on rate limit errors
                 if "unable to follow more people at this time" in str(api_error).lower():
@@ -325,14 +320,23 @@ class TwitterBot:
 
         following = self.get_follows_list()
         followers = self.get_followers_list()
+        count_users_fw = 0
 
         not_following_back = followers - following
         not_following_back = list(not_following_back)[:count]
         for user_id in not_following_back:
             try:
                 self.wait_on_action()
+                if (count_users_fw < 25):
 
-                self.TWITTER_CONNECTION.friendships.create(user_id=user_id, follow=False)
+                    count_users_fw +=1
+                    self.TWITTER_CONNECTION.friendships.create(user_id=user_id, follow=False)
+                    self.TWITTER_CONNECTION.mutes.users.create(user_id=user_id)
+                    print (count_users_fw)
+                    print("Followed %s" % user_id, file=sys.stdout)
+                    self.TWITTER_CONNECTION.mutes.users.create(user_id=user_id)
+                    #time.sleep(3+random.random()*7)
+
             except TwitterHTTPError as api_error:
                 # quit on rate limit errors
                 if "unable to follow more people at this time" in str(api_error).lower():
@@ -345,7 +349,7 @@ class TwitterBot:
                 if "already requested to follow" not in str(api_error).lower():
                     print("Error: %s" % (str(api_error)), file=sys.stderr)
 
-    def auto_follow_followers_of_user(self, user_twitter_handle, count=100):
+    def auto_follow_followers_of_user(self, user_twitter_handle, count=2500):
         """
             Follows the followers of a specified user.
         """
@@ -353,16 +357,24 @@ class TwitterBot:
         following = self.get_follows_list()
         followers_of_user = set(self.TWITTER_CONNECTION.followers.ids(screen_name=user_twitter_handle)["ids"][:count])
         do_not_follow = self.get_do_not_follow_list()
+        count_users_fw = 0
+        muted = set(self.TWITTER_CONNECTION.mutes.users.ids(screen_name=self.BOT_CONFIG["TWITTER_HANDLE"])["ids"])
+        followers_of_user = followers_of_user - muted
 
         for user_id in followers_of_user:
             try:
                 if (user_id not in following and
-                        user_id not in do_not_follow):
-
+                        user_id not in do_not_follow and count_users_fw < 10):
+  
                     self.wait_on_action()
-
+                    
                     self.TWITTER_CONNECTION.friendships.create(user_id=user_id, follow=False)
                     print("Followed %s" % user_id, file=sys.stdout)
+                    
+                    self.TWITTER_CONNECTION.mutes.users.create(user_id=user_id)
+                    count_users_fw +=1
+                #if count_users_fw > 10:
+                #    return
 
             except TwitterHTTPError as api_error:
                 # quit on rate limit errors
@@ -407,6 +419,7 @@ class TwitterBot:
 
                 self.TWITTER_CONNECTION.friendships.destroy(user_id=user_id)
                 print("Unfollowed %d" % (user_id), file=sys.stdout)
+                time.sleep(2+random.random()*2)
 
     def auto_unfollow_all_followers(self,count=None):
         """
@@ -436,7 +449,7 @@ class TwitterBot:
             if user_id not in self.BOT_CONFIG["USERS_KEEP_UNMUTED"]:
                 self.TWITTER_CONNECTION.mutes.users.create(user_id=user_id)
                 print("Muted %d" % (user_id), file=sys.stdout)
-
+                time.sleep(2+random.random()*2)
     def auto_unmute(self):
         """
             Unmutes everyone that you have muted.
@@ -455,22 +468,3 @@ class TwitterBot:
         """
 
         return self.TWITTER_CONNECTION.statuses.update(status=message)
-    
-    def auto_add_to_list(self, phrase, list_slug, count=100, result_type="recent"):
-        """
-            Add users to list slug that are tweeting phrase.
-        """
-        
-        result = self.search_tweets(phrase, count, result_type)
-        
-        for tweet in result["statuses"]:
-            try:
-                if tweet["user"]["screen_name"] == self.BOT_CONFIG["TWITTER_HANDLE"]:
-                    continue
-                
-                result = self.TWITTER_CONNECTION.lists.members.create(owner_screen_name=self.BOT_CONFIG["TWITTER_HANDLE"],
-                                                                      slug=list_slug,
-                                                                      screen_name=tweet["user"]["screen_name"])
-                print("User %s added to the list %s" % (tweet["user"]["screen_name"], list_slug), file=sys.stdout)
-            except TwitterHTTPError as api_error:
-                print(api_error)
