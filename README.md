@@ -245,6 +245,7 @@ python `script.py`{parameter} nowait
 "nowait" has to be the second parameter (for now)
 
 How to use in crontab:
+
 8 * * * * python follow.py  `USERNAME`
 
 8 * * * * python rt.py  `sentence or username`
